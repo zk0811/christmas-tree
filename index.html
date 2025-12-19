@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Grand Luxury Tree (Star Growth Animation)</title>
+    <title>Grand Luxury Tree (Local Version)</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000000; font-family: 'Times New Roman', serif; cursor: none; }
+        body { margin: 0; overflow: hidden; background-color: #000000; font-family: sans-serif; cursor: none; }
         #canvas-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; z-index: 1; }
 
         #ui-layer {
@@ -16,6 +16,7 @@
             padding-top: 40px;
         }
 
+        /* 删除了谷歌字体，改用通用字体防止卡死 */
         h1 {
             color: #fceea7;
             font-size: 5rem;
@@ -25,7 +26,8 @@
             text-shadow: 0 0 50px rgba(252, 238, 167, 0.6);
             background: linear-gradient(to bottom, #fff, #eebb66);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            font-family: 'Great Vibes', 'Times New Roman', cursive;
+            font-family: 'Times New Roman', serif; 
+            font-style: italic;
             text-transform: none;
             padding-bottom: 10px;
         }
@@ -92,24 +94,22 @@
         }
     </style>
 
-    <style>
-    </style>
-
-   <script type="importmap">
-    {
-        "imports": {
-            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-            "@mediapipe/tasks-vision": "https://unpkg.com/@mediapipe/tasks-vision@0.10.3/+esm"
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/",
+                "@mediapipe/tasks-vision": "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/+esm"
+            }
         }
-    }
-</script>
+    </script>
 </head>
 <body>
 
     <div id="loader">
         <div class="spinner"></div>
-        <div class="loader-text">Preparing Surprise...</div>
+        <div class="loader-text">Loading Resources...</div>
+        <div id="error-msg" style="color:red; margin-top:10px; font-size:10px; max-width:80%; text-align:center;"></div>
     </div>
 
     <div id="hand-cursor"></div>
@@ -137,16 +137,24 @@
         import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
         import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
 
+        const errorMsgEl = document.getElementById('error-msg');
+        
+        // 全局错误捕获
+        window.onerror = function(msg, url, line) {
+            errorMsgEl.innerText = "Error: " + msg;
+            return false;
+        };
+
         const CONFIG = {
             colors: {
                 bg: 0x000000,
                 champagneGold: 0xffd966,
                 deepGreen: 0x03180a,
                 accentRed: 0x990000,
-                lightBlue: 0x88ccff, // [新增] 浅蓝色雪花颜色
+                lightBlue: 0x88ccff,
             },
             particles: {
-                count: 1600, // [修改] 增加粒子数量，为雪花腾出空间
+                count: 1600,
                 dustCount: 2000,
                 treeHeight: 24,
                 treeRadius: 8
@@ -184,39 +192,49 @@
         bgm.volume = 0.6;
 
         async function init() {
-            initThree();
-            setupEnvironment();
-            setupLights();
-            createTextures();
-            createParticles();
-            createDust();
-            createSnow();
-            createGroundSnow();
-            createBlueGroundSnow();
+            try {
+                initThree();
+                setupEnvironment();
+                setupLights();
+                createTextures();
+                createParticles();
+                createDust();
+                createSnow();
+                createGroundSnow();
+                createBlueGroundSnow();
 
-            createDefaultTextPhoto();
-            loadLocalPhotos();
-            setupPostProcessing();
-            setupEvents();
+                createDefaultTextPhoto();
+                // 如果没有图片，注释掉下面这行
+                loadLocalPhotos(); 
+                
+                setupPostProcessing();
+                setupEvents();
 
-            bgm.play().catch(() => {
-                const unlockAudio = () => {
-                    bgm.play();
-                    window.removeEventListener('click', unlockAudio);
-                    window.removeEventListener('touchstart', unlockAudio);
-                    window.removeEventListener('keydown', unlockAudio);
-                };
-                window.addEventListener('click', unlockAudio);
-                window.addEventListener('touchstart', unlockAudio);
-                window.addEventListener('keydown', unlockAudio);
-            });
+                bgm.play().catch(() => {
+                    const unlockAudio = () => {
+                        bgm.play();
+                        window.removeEventListener('click', unlockAudio);
+                        window.removeEventListener('touchstart', unlockAudio);
+                        window.removeEventListener('keydown', unlockAudio);
+                    };
+                    window.addEventListener('click', unlockAudio);
+                    window.addEventListener('touchstart', unlockAudio);
+                    window.addEventListener('keydown', unlockAudio);
+                });
 
-            await initMediaPipe();
+                // 初始化 MediaPipe - 使用本地文件
+                document.querySelector('.loader-text').innerText = "Loading AI Model...";
+                await initMediaPipe();
 
-            const loader = document.getElementById('loader');
-            loader.style.opacity = 0;
-            setTimeout(() => loader.remove(), 800);
-            animate();
+                const loader = document.getElementById('loader');
+                loader.style.opacity = 0;
+                setTimeout(() => loader.remove(), 800);
+                animate();
+
+            } catch (error) {
+                console.error(error);
+                errorMsgEl.innerText = "Init Failed: " + error.message;
+            }
         }
 
         function initThree() {
@@ -458,7 +476,6 @@
             const redMat = new THREE.MeshPhysicalMaterial({ color: CONFIG.colors.accentRed, metalness: 0.3, roughness: 0.2, clearcoat: 1.0 });
             const caneMat = new THREE.MeshStandardMaterial({ map: caneTexture, roughness: 0.4 });
 
-            // [新增] 树上雪花的材质
             const treeSnowMat = new THREE.MeshStandardMaterial({
                 color: CONFIG.colors.lightBlue,
                 emissive: CONFIG.colors.lightBlue,
@@ -473,10 +490,8 @@
                 const rand = Math.random();
                 let mesh, type;
 
-                // [修改] 插入 TREE_SNOW 的生成概率
                 if (rand < 0.35) { mesh = new THREE.Mesh(boxGeo, greenMat); type = 'BOX'; }
                 else if (rand < 0.55) {
-                    // 20% 概率生成树上的雪花 (使用小球体)
                     mesh = new THREE.Mesh(sphereGeo, treeSnowMat);
                     type = 'TREE_SNOW';
                 }
@@ -485,7 +500,6 @@
                 else if (rand < 0.96) { mesh = new THREE.Mesh(sphereGeo, redMat); type = 'RED'; }
                 else { mesh = new THREE.Mesh(candyGeo, caneMat); type = 'CANE'; }
 
-                // 雪花粒子稍微小一点
                 let s = 0.4 + Math.random() * 0.5;
                 if (type === 'TREE_SNOW') {
                     s = 0.2 + Math.random() * 0.3;
@@ -552,6 +566,7 @@
             const textureLoader = new THREE.TextureLoader();
             const maxPhotos = 25;
 
+            // 检查是否有照片，如果没有为了防止报错，可以注释掉循环
             for (let i = 1; i <= maxPhotos; i++) {
                 const fileName = `photo${i}.jpg`;
                 textureLoader.load(
@@ -561,7 +576,9 @@
                         addPhotoToScene(texture);
                     },
                     undefined,
-                    (err) => { }
+                    (err) => { 
+                        // 如果照片加载失败，静默失败，不影响主程序
+                    }
                 );
             }
         }
@@ -694,7 +711,6 @@
                     if(mode === 'TREE') scaleTarget = 0;
                 }
 
-                // [新增] 树上雪花的闪烁效果
                 if (this.type === 'TREE_SNOW' && mode === 'TREE') {
                     const flicker = 0.5 + 0.5 * Math.sin(clock.elapsedTime * 5 + this.mesh.id);
                     scaleTarget = this.baseScale * flicker;
@@ -740,9 +756,13 @@
 
         async function initMediaPipe() {
             video = document.getElementById('webcam');
+            
+            // 重要：这里设置为 "." 代表在当前文件夹寻找 wasm 文件
             const vision = await FilesetResolver.forVisionTasks(".");
+            
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: {
+                    // 重要：这里设置为本地文件名
                     modelAssetPath: `hand_landmarker.task`,
                     delegate: "GPU"
                 },
@@ -952,7 +972,4 @@
         init();
     </script>
 </body>
-
 </html>
-
-
