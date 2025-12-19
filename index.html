@@ -741,7 +741,7 @@
 
         async function initMediaPipe() {
             video = document.getElementById('webcam');
-            const vision = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm");
+            const vision = await FilesetResolver.forVisionTasks(".");
             handLandmarker = await HandLandmarker.createFromOptions(vision, {
                 baseOptions: {
                     modelAssetPath: `hand_landmarker.task`,
@@ -953,4 +953,5 @@
         init();
     </script>
 </body>
+
 </html>
